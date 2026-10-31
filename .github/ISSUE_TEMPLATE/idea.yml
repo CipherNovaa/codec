@@ -1,0 +1,11 @@
+name: An idea
+description: Something codec could do, or do better.
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you'd like, and the moment you wished you had it.
+    validations:
+      required: true

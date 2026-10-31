@@ -1,0 +1,39 @@
+name: Something broke
+description: codec did something it shouldn't, or didn't do something it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw. Screenshots help a lot.
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distro and version
+      placeholder: Fedora 41, Debian 13, Arch …
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver
+      placeholder: NVIDIA RTX 3070, 565.77 · AMD RX 6800, Mesa 24.3 …
+  - type: input
+    id: tv
+    attributes:
+      label: Television (if you were casting)
+      placeholder: Sony Bravia XR-55A80J, Chromecast with Google TV …
+  - type: input
+    id: version
+    attributes:
+      label: codec version
+      description: Top right of the screen, or the commit you built.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: "Run `QT_FORCE_STDERR_LOGGING=1 ./build/codec 2>&1 | tee codec.log` and paste the end of it."
+      render: text

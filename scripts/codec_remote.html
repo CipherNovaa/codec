@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CODEC REMOTE</title>
+<style>
+:root {
+  --bg: %BG%; --fg: %FG%; --dim: %DIM%; --accent: %ACCENT%;
+  --surface: %SURFACE%; --border: %BORDER%;
+}
+* { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: "Iosevka", ui-monospace, Menlo, monospace;
+  padding-bottom: 170px;
+}
+header {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+}
+h1 { font-size: 15px; letter-spacing: 6px; font-weight: 300; }
+h1 span { color: var(--accent); }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+select, input[type=search] {
+  flex: 1; background: var(--surface); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font: inherit; font-size: 14px;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+#list { padding: 8px 12px; }
+.item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px; border-radius: 10px; border: 1px solid transparent;
+}
+.item + .item { margin-top: 2px; }
+.poster {
+  width: 46px; height: 66px; border-radius: 6px; object-fit: cover;
+  background: var(--surface); border: 1px solid var(--border); flex: none;
+}
+.meta { flex: 1; min-width: 0; }
+.title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-top: 3px; }
+.btn {
+  flex: none; border: 1px solid var(--border); background: var(--surface);
+  color: var(--fg); border-radius: 10px; font: inherit;
+  width: 44px; height: 44px; font-size: 16px;
+}
+.btn:active { border-color: var(--accent); color: var(--accent); }
+.btn.acc { color: var(--accent); border-color: var(--accent); }
+#transport {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  background: var(--bg); border-top: 1px solid var(--border);
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+}
+#nowtitle { font-size: 12px; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; color: var(--fg); }
+#nowstate { font-size: 9px; color: var(--dim); letter-spacing: 2px; margin-top: 2px; }
+#seek { width: 100%; margin: 10px 0 6px; accent-color: var(--accent); }
+#times { display: flex; justify-content: space-between;
+         font-size: 10px; color: var(--dim); }
+#ctl { display: flex; gap: 8px; margin-top: 8px; justify-content: space-between; }
+#ctl .btn { flex: 1; height: 46px; }
+.empty { color: var(--dim); text-align: center; padding: 40px 20px;
+         font-size: 12px; letter-spacing: 2px; }
+#toast {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--accent);
+  color: var(--fg); font-size: 11px; letter-spacing: 1px;
+  padding: 8px 16px; border-radius: 10px; opacity: 0; transition: opacity .2s;
+  pointer-events: none; z-index: 20; max-width: 90vw; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>C O D E C <span>// REMOTE</span></h1>
+  <div class="row">
+    <select id="device"><option value="">searching for devices…</option></select>
+  </div>
+  <div class="row">
+    <input id="q" type="search" placeholder="search the library" autocomplete="off">
+  </div>
+</header>
+
+<div id="list"><div class="empty">LOADING LIBRARY…</div></div>
+
+<div id="transport">
+  <div id="nowtitle">nothing playing</div>
+  <div id="nowstate">IDLE</div>
+  <input id="seek" type="range" min="0" max="100" value="0" step="1">
+  <div id="times"><span id="tpos">0:00</span><span id="tdur">0:00</span></div>
+  <div id="ctl">
+    <button class="btn" onclick="ctl('seek_rel',-30)">«30</button>
+    <button class="btn" onclick="ctl('seek_rel',-5)">«5</button>
+    <button class="btn acc" id="pp" onclick="playPause()">⏯</button>
+    <button class="btn" onclick="ctl('seek_rel',5)">5»</button>
+    <button class="btn" onclick="ctl('volume',-1)">V−</button>
+    <button class="btn" onclick="ctl('volume',1)">V+</button>
+    <button class="btn" onclick="ctl('stop',0)">■</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let lib = [], status = {state: "IDLE"}, seeking = false;
+
+function toast(t) {
+  const el = $("toast");
+  el.textContent = t;
+  el.style.opacity = 1;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.opacity = 0, 2200);
+}
+
+function fmt(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60),
+        sec = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+}
+
+async function api(path, body) {
+  const r = await fetch(path, body !== undefined
+    ? {method: "POST", headers: {"Content-Type": "application/json"},
+       body: JSON.stringify(body)}
+    : undefined);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── library ────────────────────────────────────────────────────────────────
+async function loadLibrary() {
+  try {
+    lib = (await api("/remote/api/library")).entries;
+    render();
+  } catch (e) {
+    $("list").innerHTML = '<div class="empty">LIBRARY UNAVAILABLE</div>';
+  }
+}
+
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const rows = lib.filter(e => !q || (e.show + " " + e.title).toLowerCase().includes(q))
+                  .slice(0, 60);
+  if (rows.length === 0) {
+    $("list").innerHTML = '<div class="empty">NO MATCHES</div>';
+    return;
+  }
+  $("list").innerHTML = rows.map((e, i) => `
+    <div class="item">
+      ${e.poster ? `<img class="poster" loading="lazy" src="/art?f=${encodeURIComponent(e.poster)}">`
+                 : `<div class="poster"></div>`}
+      <div class="meta">
+        <div class="title">${e.show ? e.show + "  " : ""}${e.title}</div>
+        <div class="sub">${e.subtitle || e.kind.toUpperCase()}</div>
+      </div>
+      <button class="btn" onclick="queueIt(${e.i})">+</button>
+      <button class="btn acc" onclick="playIt(${e.i})">▶</button>
+    </div>`).join("");
+}
+
+async function playIt(i) {
+  const e = lib.find(x => x.i === i);
+  const dev = $("device").value;
+  if (!dev) { toast("PICK A DEVICE FIRST"); return; }
+  toast("→ " + e.title);
+  try {
+    await api("/remote/api/play", {device: dev, uri: e.url, title: e.title});
+  } catch (err) { toast("PLAY FAILED: " + err.message); }
+}
+
+async function queueIt(i) {
+  const e = lib.find(x => x.i === i);
+  try {
+    await api("/_queue", {items: [{uri: e.url, title: e.title,
+                                   subtitle: e.subtitle || "", kind: e.kind}]});
+    toast("HUB QUEUE + " + e.title);
+  } catch (err) { toast("QUEUE FAILED"); }
+}
+
+// ── devices + transport ────────────────────────────────────────────────────
+async function loadDevices() {
+  try {
+    const d = (await api("/remote/api/devices")).devices;
+    const sel = $("device"), cur = sel.value;
+    sel.innerHTML = d.length
+      ? d.map(x => `<option value="${x.id}">${x.name}</option>`).join("")
+      : '<option value="">no devices found yet…</option>';
+    if (cur && d.some(x => x.id === cur)) sel.value = cur;
+  } catch (e) { /* keep last list */ }
+}
+
+async function poll() {
+  try {
+    status = await api("/remote/api/status");
+    $("nowtitle").textContent = status.title || "nothing playing";
+    $("nowstate").textContent = (status.state || "IDLE")
+      + (status.volume ? ` · VOL ${Math.round(status.volume * 100)}%` : "");
+    $("pp").textContent = status.state === "PLAYING" ? "⏸" : "▶";
+    if (!seeking && status.duration > 0) {
+      $("seek").max = Math.floor(status.duration);
+      $("seek").value = Math.floor(status.position);
+    }
+    $("tpos").textContent = fmt(status.position);
+    $("tdur").textContent = fmt(status.duration);
+  } catch (e) { /* hub briefly busy */ }
+}
+
+async function ctl(op, value) {
+  try { await api("/remote/api/ctl", {op, value}); } catch (e) { toast("HUB?"); }
+  setTimeout(poll, 400);
+}
+
+function playPause() { ctl(status.state === "PLAYING" ? "pause" : "resume", 0); }
+
+$("seek").addEventListener("input", () => seeking = true);
+$("seek").addEventListener("change", () => {
+  seeking = false;
+  ctl("seek", Number($("seek").value));
+});
+$("q").addEventListener("input", render);
+
+loadLibrary();
+loadDevices();
+poll();
+setInterval(loadDevices, 10000);
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

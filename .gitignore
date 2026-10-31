@@ -1,0 +1,20 @@
+build/
+*.o
+*.obj
+.cache/
+*.log
+# NASA source masters (~820MB) — re-fetchable; only the baked
+# assets/globe3d/*.jpg|png outputs belong in the repo
+assets/globe3d/src/
+__pycache__/
+assets/mechui/.bak/
+
+# corralled scratch + local backups (not shipped, re-creatable)
+_archive/
+
+# SOURCE material (bucket 2) — raw asset packs (~1.1GB) curated FROM but never
+# loaded by the app; re-obtainable. Only baked assets/ belong in the repo.
+source-assets/
+
+# the coding agent's local (per-machine) settings
+.claude/settings.local.json
