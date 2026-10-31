@@ -111,7 +111,7 @@ codec's hardest bugs rarely matched their first explanation. A few of the storie
 <p align="center">
   <img src="docs/media/look-detail.jpg" alt="Home up close at 2x: the 4K, DV and ATMOS badges, the MOVIES readout card, the section wheel and the CONTINUE plate, every edge on the pixel grid" width="70%">
   <br>
-  <i>Up close, at 2×: badges, the readout card, the wheel. Every edge sits on the pixel grid.</i>
+  <i>Home screen up close, at 2×:</i>
 </p>
 
 | | |
